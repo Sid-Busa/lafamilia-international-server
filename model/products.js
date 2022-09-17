@@ -2,6 +2,11 @@ import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
 const productSchema = new Schema({
+	imgId:{
+		type: String,
+		trim: true,
+		default: '',
+	},
 	code: {
 		type: String,
 		trim: true,

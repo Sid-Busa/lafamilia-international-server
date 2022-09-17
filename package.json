@@ -5,16 +5,20 @@
 	"main": "index.js",
 	"type": "module",
 	"scripts": {
-		"start": "node -r dotenv/config index dotenv_config_path=./.env"
+		"start": "nodemon -r dotenv/config index dotenv_config_path=./.env"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
 		"body-parser": "^1.20.0",
+		"cloudinary": "^1.31.0",
+		"compression": "^1.7.4",
+		"connect": "^3.7.0",
 		"cors": "^2.8.5",
 		"dotenv": "^16.0.1",
 		"express": "^4.18.1",
+		"express-fileupload": "^1.4.0",
 		"jsonwebtoken": "^8.5.1",
 		"mongoose": "^6.3.4"
 	}

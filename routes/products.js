@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { auth } from '../middleware/auth.js';
 import Products from '../model/products.js';
+import { v2 as cloudinary } from 'cloudinary'
 const router = Router();
 
 router.post('/createProduct', auth, async (req, res) => {
 	const {
 		code,
 		sizes,
-		imageUrl,
 		finishes,
 		width,
 		weight,
@@ -16,10 +16,15 @@ router.post('/createProduct', auth, async (req, res) => {
 		category_id,
 	} = req.body;
 
+	const file = req.files.imageUrl
+
 	try {
+		const url = await cloudinary.uploader.upload(file.tempFilePath)		
+		const imgId = url.secure_url.split("/").pop().split(".")[0];
 		const products = await new Products({
+			imgId,
+			imageUrl:url.secure_url,
 			code,
-			imageUrl,
 			sizes,
 			finishes,
 			width,
@@ -85,7 +90,6 @@ router.put('/updateProduct', auth, async (req, res) => {
 		code,
 		sizes,
 		finishes,
-		imageUrl,
 		width,
 		weight,
 		load_capacity,
@@ -94,13 +98,26 @@ router.put('/updateProduct', auth, async (req, res) => {
 		id,
 	} = req.body;
 
+	const file = req.files?.imageUrl
+	const fileImageUrl = req.body?.imageUrl
+	let url = fileImageUrl
+	let newImageId = imgId
+
+	if(file){
+		let newUrl = await cloudinary.uploader.upload(file.tempFilePath)	
+		url = newUrl.secure_url
+		await cloudinary.uploader.destroy(imgId)
+		newImageId = newUrl.secure_url.split("/").pop().split(".")[0];
+	}
+
 	try {
 		const updatedProduct = await Products.findOneAndUpdate(
 			{ _id: id },
 			{
 				code,
 				sizes,
-				imageUrl,
+				imageUrl:url,
+				imgId:newImageId,
 				finishes,
 				width,
 				weight,
@@ -122,9 +139,11 @@ router.put('/updateProduct', auth, async (req, res) => {
 	}
 });
 
-router.delete('/deleteProduct/:id', auth, async (req, res) => {
-	const { id } = req.params;
+router.delete('/deleteProduct/:id/:imgId', auth, async (req, res) => {
+	const { id,imgId } = req.params;
 	try {
+		await cloudinary.uploader.destroy(imgId)
+
 		const product = await Products.deleteOne({ _id: id });
 		res
 			.status(200)

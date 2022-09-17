@@ -2,28 +2,11 @@ import { Router } from 'express';
 import { auth } from '../middleware/auth.js';
 import Categorys from '../model/category.js';
 import Products from '../model/products.js';
+import fs from 'fs';
+import { v2 as cloudinary } from 'cloudinary'
 const router = Router();
 
-router.post('/createCategory', auth, async (req, res) => {
-	const { name, imageUrl,metalType } = req.body;
 
-	try {
-		const category = await new Categorys({
-			name,
-			imageUrl,
-			metalType
-		});
-		await category.save();
-		res.send({
-			success: true,
-			category,
-			message: 'Category is created',
-		});
-	} catch (error) {
-		console.log('Error', error);
-		res.status(500).json({ success: false, error, message: error.message });
-	}
-});
 
 router.get('/getAllCategory', async (req, res) => {
 	try {
@@ -65,13 +48,52 @@ router.get('/getCategoryByMetalName/:name', async (req, res) => {
 	}
 });
 
-router.put('/updateCategory', auth, async (req, res) => {
-	const { name, imageUrl, id,metalType } = req.body;
+router.post('/createCategory', auth, async (req, res) => {
 
+	const { name,metalType } = req.body;
+	const file = req.files.imageUrl
+
+	try {
+		const url = await cloudinary.uploader.upload(file.tempFilePath)		
+		const imgId = url.secure_url.split("/").pop().split(".")[0];
+		const category = await new Categorys({
+			imgId,
+			name,
+			imageUrl:url.secure_url,
+			metalType
+		});
+		
+		await category.save();
+		res.send({
+			success: true,
+			category,
+			message: 'Category is created',
+		});
+	} catch (error) {
+		console.log('Error', error);
+		res.status(500).json({ success: false, error, message: error.message });
+	}
+});
+
+router.put('/updateCategory', auth, async (req, res) => {
+	const { name, id,metalType,imgId } = req.body;
+	const file = req.files?.imageUrl
+	const fileImageUrl = req.body?.imageUrl
+
+	let url = fileImageUrl
+	let newImageId = imgId
+
+	if(file){
+		let newUrl = await cloudinary.uploader.upload(file.tempFilePath)	
+		url = newUrl.secure_url
+		await cloudinary.uploader.destroy(imgId)
+		newImageId = newUrl.secure_url.split("/").pop().split(".")[0];
+	}
+	
 	try {
 		const updatedCategory = await Categorys.findOneAndUpdate(
 			{ _id: id },
-			{ name, imageUrl,metalType },
+			{ name,metalType,imageUrl:url,imgId:newImageId },
 			{ new: true }
 		);
 
@@ -86,10 +108,19 @@ router.put('/updateCategory', auth, async (req, res) => {
 	}
 });
 
-router.delete('/deleteCategoryById/:id', auth, async (req, res) => {
-	const { id } = req.params;
+router.delete('/deleteCategoryById/:id/:imgId', auth, async (req, res) => {
+	const { id,imgId } = req.params;
+
 	try {
+		await cloudinary.uploader.destroy(imgId)
 		const category = await Categorys.deleteOne({ _id: id });
+		const products = await Products.find({category_id: id})
+		if(Array.isArray(products)){
+			products.forEach(async ({imgId}) => {
+				await cloudinary.uploader.destroy(imgId)
+			})
+		}
+
 		await Products.deleteMany({ category_id: id });
 		
 		res

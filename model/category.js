@@ -13,6 +13,11 @@ const METAL_TYPE = [
 ]
 
 const categoriesSchema = new Schema({
+	imgId:{
+		type: String,
+		trim: true,
+		default: '',
+	},
 	name: {
 		type: String,
 		trim: true,
@@ -22,7 +27,7 @@ const categoriesSchema = new Schema({
 		default: '',
 		type: String,
 		trim: true,
-		required: [true, 'imageUrl must be required'],
+		
 	},
 	metalType: {
 		type:String,
